@@ -1126,6 +1126,7 @@ bool CHLClient::ReplayPostInit()
 //-----------------------------------------------------------------------------
 // Purpose: Called after client & server DLL are loaded and all systems initialized
 //-----------------------------------------------------------------------------
+void SwapDisconnectCommand();
 void CHLClient::PostInit()
 {
 	IGameSystem::PostInitAllSystems();
@@ -1152,6 +1153,7 @@ void CHLClient::PostInit()
 		}
 	}
 #endif
+	SwapDisconnectCommand();
 }
 
 //-----------------------------------------------------------------------------
