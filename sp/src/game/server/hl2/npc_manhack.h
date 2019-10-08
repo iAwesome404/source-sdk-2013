@@ -60,7 +60,7 @@ public:
 	CNPC_Manhack();
 	~CNPC_Manhack();
 
-	Class_T			Classify(void);
+	Class_T	CNPC_Manhack::Classify(void);
 
 	bool			CorpseGib( const CTakeDamageInfo &info );
 	void			Event_Dying(void);
@@ -72,7 +72,9 @@ public:
 	float			GetDefaultNavGoalTolerance();
 
 	void			UpdateOnRemove( void );
+#ifndef EZ
 	void			KillSprites( float flDelay );
+#endif
 
 	void			OnStateChange( NPC_STATE OldState, NPC_STATE NewState );
 
@@ -102,9 +104,11 @@ public:
 
 	virtual float	GetHeadTurnRate( void ) { return 45.0f; } // Degrees per second
 
-	void			CheckCollisions(float flInterval);
+	virtual void	CheckCollisions(float flInterval);
 	virtual void	GatherEnemyConditions( CBaseEntity *pEnemy );
-	void			PlayFlySound(void);
+	virtual void	PlayFlySound(void);
+	virtual void	PlayAttackSound(bool bHostile);
+	virtual void	PlayDamagedSound(void);
 	virtual void	StopLoopingSounds(void);
 
 	void			Precache(void);
@@ -113,10 +117,17 @@ public:
 	void			Activate();
 	void			StartTask( const Task_t *pTask );
 
-	void			BladesInit();
-	void			SoundInit( void );
-	void			StartEye( void );
-	
+	virtual void			BladesInit();
+	virtual void			SoundInit( void );
+#ifdef EZ
+	virtual CSprite		* GetGlowSpritePtr(int i);
+	virtual void		  SetGlowSpritePtr(int i, CSprite * sprite);
+	virtual EyeGlow_t	* GetEyeGlowData(int i);
+	virtual int			  GetNumGlows() { return 2; };
+#else
+	virtual void			StartEye( void );
+#endif
+
 	bool			HandleInteraction(int interactionType, void* data, CBaseCombatCharacter* sourceEnt);
 
 	void			PostNPCInit( void );
@@ -126,7 +137,7 @@ public:
 
 	void			SpinBlades(float flInterval);
 
-	void			Slice( CBaseEntity *pHitEntity, float flInterval, trace_t &tr );
+	virtual void	Slice( CBaseEntity *pHitEntity, float flInterval, trace_t &tr );
 	void			Bump( CBaseEntity *pHitEntity, float flInterval, trace_t &tr );
 	void			Splash( const Vector &vecSplashPos );
 
@@ -170,6 +181,7 @@ public:
 		m_iHealth = 0;
 	}
 
+	virtual void SetEyeState(int state);
 
 	DEFINE_CUSTOM_AI;
 
@@ -184,9 +196,8 @@ private:
 	void StopBurst( bool bInterruptSchedule = false );
 
 	void UpdatePanels( void );
-	void SetEyeState( int state );
 
-	void ShowHostile( bool hostile = true );
+
 
 	bool IsFlyingActivity( Activity baseAct );
 
@@ -205,6 +216,7 @@ private:
 	// Are we being held by the physcannon?
 	bool IsHeldByPhyscannon( );
 
+	void ShowHostile(bool hostile = true);
 	void StartLoitering( const Vector &vecLoiterPosition );
 	void StopLoitering() { m_vecLoiterPosition = vec3_invalid; m_fTimeNextLoiterPulse = gpGlobals->curtime; }
 	bool IsLoitering() { return m_vecLoiterPosition != vec3_invalid; }
@@ -249,8 +261,9 @@ private:
 	bool			m_bIgnoreClipbrushes;
 
 	float			m_flBladeSpeed;
-
+#ifndef EZ // Declared in BaseNPC
 	CSprite			*m_pEyeGlow;
+#endif
 	CSprite			*m_pLightGlow;
 	
 	CHandle<SmokeTrail>	m_hSmokeTrail;
@@ -275,6 +288,29 @@ private:
 	CNetworkVar( int,	m_nEnginePitch2 );
 	CNetworkVar( float,	m_flEnginePitch1Time );
 	CNetworkVar( float,	m_flEnginePitch2Time );
+
+	//NEW CONTROLLABLE STUFF:
+	bool m_bControllable;
+	bool m_bShouldFollowPlayer;
+
+public:
+	void		SetControllable(bool bControllable);
+	void		ShouldFollowPlayer(bool bFollow) { m_bShouldFollowPlayer = bFollow; }
+	void		ShowRedGlow(bool bHide);
+
+	//void		SetHeadYaw(float HeadYaw);
+
+	void		MoveUpDown(float direction);
+	void		MoveForwardBack(float direction, QAngle angManhackEye);
+	//void TurnLeft();
+	//void TurnRight();
+
+	Vector		GetManhackView();
+	//Vector		m_vCollisionView;		//NOTE: I think this is not even used at the moment
+
+	void		ComeBackToPlayer(CBasePlayer *pPlayer, float fCallBackTime);
+	void		GoThere(CBasePlayer *pPlayer, float fGoHereTime);
+
 };
 
 #endif	//NPC_MANHACK_H

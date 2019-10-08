@@ -226,6 +226,7 @@ CNPC_Manhack::CNPC_Manhack()
 	m_flEnginePitch1Time = 0;
 	m_bDoSwarmBehavior = true;
 	m_flBumpSuppressTime = 0;
+	m_bShouldFollowPlayer = false;
 }
 
 //------------------------------------------------------------------------------
@@ -240,7 +241,12 @@ CNPC_Manhack::~CNPC_Manhack()
 //-----------------------------------------------------------------------------
 Class_T	CNPC_Manhack::Classify(void)
 {
+#ifdef EZ
+	return (m_bHeld || m_bHackedByAlyx) ? CLASS_CITIZEN_REBEL : CLASS_MANHACK; //  Breadman - Hacks are rebel class. Rebels are combine class. This inverse relationship makes them attack each other.
+#else
 	return (m_bHeld||m_bHackedByAlyx) ? CLASS_PLAYER_ALLY : CLASS_MANHACK; 
+#endif
+
 }
 
 
@@ -400,10 +406,11 @@ void CNPC_Manhack::Event_Killed( const CTakeDamageInfo &info )
 	else
 	{
 		m_bGib = false;
-		
+#ifndef EZ		
 		//FIXME: These don't stay with the ragdolls currently -- jdw
 		// Long fadeout on the sprites!!
 		KillSprites( 0.0f );
+#endif
 	}
 
 	BaseClass::Event_Killed( info );
@@ -764,7 +771,7 @@ int	CNPC_Manhack::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		m_vForceVelocity = vecBestDir * info.GetDamage() * 0.5f;
 		m_flBladeSpeed = 10.0;
 
-		EmitSound( "NPC_Manhack.Bat" );	
+		PlayDamagedSound();
 
 		// tdInfo.SetDamage( 1.0 );
 
@@ -2453,10 +2460,103 @@ void CNPC_Manhack::Spawn(void)
 	SetCollisionGroup( COLLISION_GROUP_NONE );
 
 	m_bHeld = false;
+
+#ifdef EZ
+	m_bHackedByAlyx = true;
+#else
 	m_bHackedByAlyx = false;
+#endif
+
 	StopLoitering();
 }
 
+#ifdef EZ
+//-----------------------------------------------------------------------------
+// Purpose: Return the pointer for a given sprite given an index
+//-----------------------------------------------------------------------------
+CSprite	* CNPC_Manhack::GetGlowSpritePtr(int index) {
+	switch (index) {
+		case 0:
+			return m_pEyeGlow;
+		case 1:
+			return m_pLightGlow;
+		default:
+			return BaseClass::GetGlowSpritePtr(index);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Sets the glow sprite at the given index
+//-----------------------------------------------------------------------------
+void CNPC_Manhack::SetGlowSpritePtr(int index, CSprite * sprite)
+{
+	switch (index) {
+	case 0:
+		m_pEyeGlow = sprite;
+		break;
+	case 1:
+		m_pLightGlow = sprite;
+		break;
+	default:
+		BaseClass::SetGlowSpritePtr(index, sprite);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Return the glow attributes for a given index
+//-----------------------------------------------------------------------------
+EyeGlow_t * CNPC_Manhack::GetEyeGlowData(int index)
+{
+	EyeGlow_t * eyeGlow = new EyeGlow_t();
+
+	switch(index){
+	case 0 :
+		eyeGlow->spriteName = MANHACK_GLOW_SPRITE;
+		eyeGlow->attachment = "Eye";
+
+		eyeGlow->alpha = 128;
+		eyeGlow->brightness = 164;
+		if (m_bHackedByAlyx)
+		{
+			eyeGlow->red = 0;
+			eyeGlow->green = 255;
+			eyeGlow->blue = 255;
+		}
+		else
+		{
+			eyeGlow->red = 255;
+			eyeGlow->green = 0;
+			eyeGlow->blue = 0;
+		}
+		eyeGlow->renderMode = kRenderTransAdd;
+		eyeGlow->scale = 0.25f;
+		return eyeGlow;
+	case 1:
+		eyeGlow->spriteName = MANHACK_GLOW_SPRITE;
+		eyeGlow->attachment = "Light";
+
+		eyeGlow->alpha = 128;
+		eyeGlow->brightness = 164;
+		if (m_bHackedByAlyx)
+		{
+			eyeGlow->red = 0;
+			eyeGlow->green = 255;
+			eyeGlow->blue = 255;
+		}
+		else
+		{
+			eyeGlow->red = 255;
+			eyeGlow->green = 0;
+			eyeGlow->blue = 0;
+		}
+		eyeGlow->renderMode = kRenderTransAdd;
+		eyeGlow->scale = 0.25f;
+		return eyeGlow;
+	default:
+		return NULL;
+	}
+}
+#else
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -2470,13 +2570,13 @@ void CNPC_Manhack::StartEye( void )
 		
 		if( m_bHackedByAlyx )
 		{
-			m_pEyeGlow->SetTransparency( kRenderTransAdd, 0, 255, 0, 128, kRenderFxNoDissipation );
-			m_pEyeGlow->SetColor( 0, 255, 0 );
+			m_pEyeGlow->SetTransparency(kRenderTransAdd, 0, 255, 0, 128, kRenderFxNoDissipation);
+			m_pEyeGlow->SetColor(0, 255, 0);
 		}
 		else
 		{
-			m_pEyeGlow->SetTransparency( kRenderTransAdd, 255, 0, 0, 128, kRenderFxNoDissipation );
-			m_pEyeGlow->SetColor( 255, 0, 0 );
+			m_pEyeGlow->SetTransparency(kRenderTransAdd, 255, 0, 0, 128, kRenderFxNoDissipation);
+			m_pEyeGlow->SetColor(255, 0, 0);
 		}
 
 		m_pEyeGlow->SetBrightness( 164, 0.1f );
@@ -2492,8 +2592,8 @@ void CNPC_Manhack::StartEye( void )
 
 		if( m_bHackedByAlyx )
 		{
-			m_pLightGlow->SetTransparency( kRenderTransAdd, 0, 255, 0, 128, kRenderFxNoDissipation );
-			m_pLightGlow->SetColor( 0, 255, 0 );
+			m_pLightGlow->SetTransparency(kRenderTransAdd, 0, 255, 0, 128, kRenderFxNoDissipation);
+			m_pLightGlow->SetColor(0, 255, 0);
 		}
 		else
 		{
@@ -2506,17 +2606,19 @@ void CNPC_Manhack::StartEye( void )
 		m_pLightGlow->SetAsTemporary();
 	}
 }
+#endif
 
 //-----------------------------------------------------------------------------
 
 void CNPC_Manhack::Activate()
 {
 	BaseClass::Activate();
-
+#ifndef EZ
 	if ( IsAlive() )
 	{
 		StartEye();
 	}
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -2696,6 +2798,17 @@ void CNPC_Manhack::StartTask( const Task_t *pTask )
 			int count = 0;
 			m_vSavePosition = Vector( 0, 0, 0 );
 
+			if (m_bShouldFollowPlayer)
+			{
+				CBasePlayer *pPlayer = ToBasePlayer(GetOwnerEntity());
+				if (pPlayer)
+				{
+					//DevMsg("Following player\n");
+					m_vSavePosition += pPlayer->EyePosition() * 10;
+					count += 10;
+				}
+			}
+
 			// give attacking members more influence
 			AISquadIter_t iter;
 			for (CAI_BaseNPC *pSquadMember = m_pSquad->GetFirstMember( &iter ); pSquadMember; pSquadMember = m_pSquad->GetNextMember( &iter ) )
@@ -2788,7 +2901,9 @@ void CNPC_Manhack::StartTask( const Task_t *pTask )
 void CNPC_Manhack::UpdateOnRemove( void )
 {
 	DestroySmokeTrail();
+#ifndef EZ
 	KillSprites( 0.0 );
+#endif
 	BaseClass::UpdateOnRemove();
 }
 
@@ -2870,6 +2985,7 @@ void CNPC_Manhack::ClampMotorForces( Vector &linear, AngularImpulse &angular )
 	angular.z *= scale;
 }
 
+#ifndef EZ
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -2896,6 +3012,7 @@ void CNPC_Manhack::KillSprites( float flDelay )
 	}
 	*/
 }
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: Tests whether we're above the target's feet but also below their top
@@ -3135,15 +3252,35 @@ void CNPC_Manhack::ShowHostile( bool hostile /*= true*/)
 	//TODO: Open the manhack panels or close them, depending on the state
 	m_bShowingHostile = hostile;
 
-	if ( hostile )
+	PlayAttackSound(hostile);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Play a sound before charging at the player
+// Input  : hostile - 
+//-----------------------------------------------------------------------------
+void CNPC_Manhack::PlayAttackSound(bool hostile /*= true*/)
+{
+	if (hostile)
 	{
-		EmitSound( "NPC_Manhack.ChargeAnnounce" );
+		EmitSound("NPC_Manhack.ChargeAnnounce");
 	}
 	else
 	{
-		EmitSound( "NPC_Manhack.ChargeEnd" );
+		EmitSound("NPC_Manhack.ChargeEnd");
 	}
 }
+
+
+//-----------------------------------------------------------------------------
+// Purpose: Play a sound before charging at the player
+//-----------------------------------------------------------------------------
+void CNPC_Manhack::PlayDamagedSound(void)
+{
+	EmitSound("NPC_Manhack.Bat");
+}
+
+
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -3223,11 +3360,13 @@ void CNPC_Manhack::SetEyeState( int state )
 			if ( m_pEyeGlow )
 			{
 				//Toggle our state
+#ifndef EZ
 				if( m_bHackedByAlyx )
 				{
 					m_pEyeGlow->SetColor( 0, 255, 0 );
 				}
 				else
+#endif
 				{
 					m_pEyeGlow->SetColor( 255, 0, 0 );
 				}
@@ -3239,11 +3378,13 @@ void CNPC_Manhack::SetEyeState( int state )
 			
 			if ( m_pLightGlow )
 			{
+#ifndef EZ
 				if( m_bHackedByAlyx )
 				{
 					m_pLightGlow->SetColor( 0, 255, 0 );
 				}
 				else
+#endif
 				{
 					m_pLightGlow->SetColor( 255, 0, 0 );
 				}
